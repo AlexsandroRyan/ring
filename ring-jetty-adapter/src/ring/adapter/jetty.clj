@@ -35,6 +35,11 @@
            [jakarta.servlet AsyncContext AsyncEvent AsyncListener]
            [jakarta.servlet.http HttpServletRequest HttpServletResponse]))
 
+(defn- build-request-map
+  [^Request base-request ^HttpServletRequest request]
+  (assoc (servlet/build-request-map request)
+         :request-ts-millis (.getTimeStamp base-request)))
+
 (defn- websocket-socket [^Session session]
   (let [remote (.getRemote session)]
     (reify
@@ -103,7 +108,7 @@
 (defn- proxy-handler ^ServletHandler [handler]
   (proxy [ServletHandler] []
     (doHandle [_ ^Request base-request request response]
-      (let [request-map  (servlet/build-request-map request)
+      (let [request-map  (build-request-map base-request request)
             response-map (handler request-map)]
         (try
           (if (ws/websocket-response? response-map)
@@ -124,10 +129,10 @@
           (.complete context))
       (servlet/update-servlet-response response context response-map))))
 
-(defn- async-timeout-listener [request context response handler]
+(defn- async-timeout-listener [base-request request context response handler]
   (proxy [AsyncListener] []
     (onTimeout [^AsyncEvent _]
-      (handler (servlet/build-request-map request)
+      (handler (build-request-map base-request request)
                (async-jetty-respond context request response)
                (async-jetty-raise context response)))
     (onComplete [^AsyncEvent _])
@@ -142,10 +147,14 @@
         (when timeout-handler
           (.addListener
            context
-           (async-timeout-listener request context response timeout-handler)))
+           (async-timeout-listener base-request
+                                   request
+                                   context
+                                   response
+                                   timeout-handler)))
         (try
           (handler
-           (servlet/build-request-map request)
+           (build-request-map base-request request)
            (async-jetty-respond context request response)
            (async-jetty-raise context response))
           (finally
