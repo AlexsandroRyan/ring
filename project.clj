@@ -1,4 +1,4 @@
-(defproject ring "1.0.0-1.12.1"
+(defproject AlexsandroRyan/ring "1.0.0-1.12.1"
   :description "A Clojure web applications library."
   :url "https://github.com/AlexsandroRyan/ring"
   :license {:name "The MIT License"
