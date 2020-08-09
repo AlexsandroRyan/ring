@@ -262,7 +262,8 @@
       (.addConnector server (http-connector server options)))
     (when (or (options :ssl?) (options :ssl-port))
       (.addConnector server (ssl-connector server options)))
-    server))
+    {:server server
+     :pool pool}))
 
 (defn run-jetty
   "Start a Jetty webserver to serve the given handler according to the
@@ -318,7 +319,8 @@
   :response-header-size   - the maximum size of a response header (default 8192)
   :send-server-version?   - add Server header to HTTP response (default true)"
   ^Server [handler options]
-  (let [server (create-server (dissoc options :configurator))
+  (let [jetty (create-server (dissoc options :configurator))
+        server (:server jetty)
         proxy  (if (:async? options)
                  (async-proxy-handler handler
                                       (:async-timeout options 0)
@@ -331,7 +333,7 @@
       (.start server)
       (when (:join? options true)
         (.join server))
-      server
+      jetty
       (catch Exception ex
         (.stop server)
         (throw ex)))))
